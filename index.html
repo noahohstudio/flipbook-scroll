@@ -257,7 +257,7 @@
   .paper p {
     margin: 0 0 1em;
     animation: emerge 520ms var(--ease) both;
-    animation-delay: calc(180ms + var(--i) * 140ms);
+    animation-delay: calc(180ms + var(--i) * 140ms + var(--pause, 0ms));
   }
   .paper a {
     color: inherit;
@@ -279,7 +279,7 @@
     color: var(--muted);
     cursor: pointer;
     animation: emerge 520ms var(--ease) both;
-    animation-delay: calc(180ms + var(--i) * 140ms);
+    animation-delay: calc(180ms + var(--i) * 140ms + var(--pause, 0ms));
     transition: color var(--dur-fast) ease;
   }
   .close:hover { color: var(--ink); }
@@ -316,9 +316,10 @@
   <div class="note" id="note" role="dialog" aria-modal="true" aria-label="About" tabindex="-1" hidden>
     <div class="paper">
       <p style="--i: 0">Lately, I’ve been interested in taking the moments of my life I value, and finding new ways to play with them, reliving them as I do. I hope through this project, you got to see a slice into my life, and in turn, you also got to reflect on the beauty of yours.</p>
-      <p style="--i: 1">Like the work? Let’s talk.</p>
-      <p style="--i: 2"><a href="https://noaoh.com" target="_blank" rel="noopener">noaoh.com</a></p>
-      <button type="button" class="close" style="--i: 3" aria-label="Close">
+      <!-- A beat after the note itself has come in -->
+      <p style="--i: 1; --pause: 700ms">Like the work? Let’s talk.</p>
+      <p style="--i: 2; --pause: 700ms"><a href="https://noaoh.com" target="_blank" rel="noopener">noaoh.com</a></p>
+      <button type="button" class="close" style="--i: 3; --pause: 700ms" aria-label="Close">
         <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3.5 3.8c3.6 3.3 7.4 7 11 10.6" /><path d="M14.3 3.4C10.9 7 7.3 10.6 3.6 14.4" /></svg>
       </button>
     </div>
