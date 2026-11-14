@@ -176,6 +176,36 @@
     .menu li { animation: none; }
   }
 
+  /* The loader, on the page on its own only (never the lab's card): the piece's name and Noah's, in the menu's face a
+     size up, in the middle, while the first moment loads. It fades in, stays long enough to read, and fades out
+     before the strip comes in. */
+  .loader {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: var(--weight-display);
+    letter-spacing: var(--tracking-display);
+    word-spacing: 0.06em;
+    line-height: 1.1;
+    pointer-events: none;
+    animation: arrive 600ms var(--ease-fade) backwards;
+    transition: opacity var(--fade-out) var(--ease-fade);
+  }
+  .loader .by { color: var(--muted); }
+  /* The menu waits for it */
+  .moments { transition: opacity var(--fade-in) var(--ease-fade); }
+  body:has(.loader) .moments { opacity: 0; pointer-events: none; }
+  .loader[data-gone] { opacity: 0; }
+  @keyframes arrive {
+    from { opacity: 0; }
+  }
+
+  body[data-mode="card"] .loader,
   body[data-mode="card"] .moments,
   body[data-mode="card"] .menu { display: none; }
   body[data-mode="card"] #stage { cursor: default; }
@@ -183,6 +213,8 @@
 </head>
 <body data-hidden>
   <div id="stage" role="img" aria-label="A row of frames from a moment. Scroll sideways; scroll fast and it plays."></div>
+
+  <p class="loader" aria-hidden="true"><span>Flipbook Scroll <span class="by">by Noah</span></span></p>
 
   <nav class="moments" aria-label="Moments">
     <button type="button" class="current" aria-expanded="false" aria-controls="moments-menu">
@@ -271,6 +303,17 @@
       let reel = null;
       const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+      // The loader stays at least this long, so it reads rather than flashes, then fades out before the first moment
+      const loader = mode === "play" ? document.querySelector(".loader") : null;
+      const readable = wait(1200);
+      async function unload() {
+        if (!loader?.isConnected) return;
+        await readable;
+        loader.setAttribute("data-gone", "");
+        await wait(450 + 150); // out, and a beat of white
+        loader.remove();
+      }
+
       // The next moment starts loading at once; the one showing fades all the way out meanwhile. Once both are done,
       // a beat of white, and the next fades in from its first frame.
       async function show(key) {
@@ -287,7 +330,7 @@
         reel = next;
         flipbook.setReel(reel, 0);
         old?.close();
-        await wait(old ? 140 : 0);
+        await (old ? wait(140) : unload());
         if (showing !== key) return;
         document.body.removeAttribute("data-hidden");
         flipbook.reveal();
