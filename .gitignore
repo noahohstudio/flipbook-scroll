@@ -1,0 +1,6 @@
+# The original clips stay local: the page only uses the frames cut from them
+source/
+# Working notes and helpers, for the sandbox
+notes.md
+_card-preview.html
+.DS_Store

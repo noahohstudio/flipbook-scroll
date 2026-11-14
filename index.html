@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flipbook Scroll</title>
+<meta name="description" content="An endless row of frames from a moment, which plays like a flipbook when you scroll it fast enough.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500&display=swap">
+<!-- The site's display face, Neue Haas Grotesk Display Pro 45 Light, from Noah's Adobe Fonts web project "noaoh.com",
+     as noaoh.com loads it (app/layout.tsx) -->
+<link rel="preconnect" href="https://use.typekit.net" crossorigin>
+<link rel="stylesheet" href="https://use.typekit.net/igq6nlv.css">
+<style>
+  /* noaoh.com's tokens (app/tokens.css): white page, black type, one gray, Geist and the display face */
+  :root {
+    --bg: #ffffff;
+    --ink: #000000;
+    --muted: #737373;
+    --font: "Geist", "Helvetica Neue", Arial, sans-serif;
+    --font-display: "NHG Display", "neue-haas-grotesk-display", var(--font);
+    --weight-display: 300;
+    --tracking-display: -0.02em;
+    --size-body: 1rem;
+    --weight-medium: 500;
+    --tracking-body: -0.01em;
+    --gutter: clamp(16px, 3.6vw, 64px);
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-fade: cubic-bezier(0.45, 0, 0.25, 1);
+    --fade-out: 450ms;
+    --fade-in: 800ms;
+    --dur-fast: 150ms;
+  }
+
+  /* The display face as it's installed on Noah's Mac, as noaoh.com names it (app/globals.css) */
+  @font-face { font-family: "NHG Display"; font-weight: 300; src: local("Neue Haas Grotesk Display Pro 45 Light"), local("NeueHaasDisplay-Light"); }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    letter-spacing: var(--tracking-body);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none; /* no back-swipe while you push the strip */
+  }
+
+  body { overflow: hidden; }
+
+  #stage {
+    position: fixed;
+    inset: 0;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #stage:active { cursor: grabbing; }
+
+  /* Changing moments: the strip (flipbook.js, conceal and reveal) and its name fade all the way out together; then,
+     after a beat of white, the next name fades in as its cards do, each card a beat after the one to its left */
+  body[data-hidden] .name {
+    opacity: 0;
+    transition-duration: var(--fade-out);
+  }
+
+  /* Which moment: just its name, top right on the page's edge, in the site's display face (light, a little tight), at
+     body size, with the nav's small chevron */
+  .moments {
+    position: fixed;
+    top: calc(var(--gutter) - 4px);
+    right: var(--gutter);
+    z-index: 2;
+    font-family: var(--font-display);
+    font-size: var(--size-body);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--tracking-display);
+    word-spacing: 0.06em; /* the face's own word space is narrow once tracked in */
+    line-height: 1.1;
+  }
+
+  .current {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: min(360px, 70vw);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    letter-spacing: inherit;
+    word-spacing: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .current:focus-visible {
+    outline: 1.5px solid var(--ink);
+    outline-offset: 6px;
+    border-radius: 3px;
+  }
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: opacity var(--fade-in) var(--ease-fade);
+  }
+
+  .chevron {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: rotate var(--dur-fast) var(--ease);
+  }
+  .moments[data-open] .chevron { rotate: 180deg; }
+
+  /* The choices: bare names under it, right-aligned, gray until they're the one showing or under the pointer. Opening,
+     they come in one after another, each fading up out of a slight blur; closing, they go together, quickly. */
+  .menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    display: grid;
+    justify-items: end;
+    gap: 1px;
+    margin: 0;
+    padding: 10px 0 0;
+    list-style: none;
+  }
+  .menu[hidden] { display: none; }
+
+  .menu li {
+    animation: emerge 380ms var(--ease) both;
+    animation-delay: calc(60ms + var(--i) * 55ms);
+  }
+  .menu[data-closing] li {
+    animation: leave 140ms ease both;
+  }
+  @keyframes emerge {
+    from { opacity: 0; translate: 0 -5px; filter: blur(3px); }
+  }
+  @keyframes leave {
+    to { opacity: 0; }
+  }
+
+  .menu button {
+    padding: 3px 0;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    letter-spacing: inherit;
+    word-spacing: inherit;
+    text-align: right;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color var(--dur-fast) ease;
+  }
+  .menu button:hover,
+  .menu button[aria-current] { color: var(--ink); }
+  .menu button:focus-visible {
+    color: var(--ink);
+    outline: 1.5px solid var(--ink);
+    outline-offset: 4px;
+    border-radius: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .menu li { animation: none; }
+  }
+
+  body[data-mode="card"] .moments,
+  body[data-mode="card"] .menu { display: none; }
+  body[data-mode="card"] #stage { cursor: default; }
+</style>
+</head>
+<body data-hidden>
+  <div id="stage" role="img" aria-label="A row of frames from a moment. Scroll sideways; scroll fast and it plays."></div>
+
+  <nav class="moments" aria-label="Moments">
+    <button type="button" class="current" aria-expanded="false" aria-controls="moments-menu">
+      <span class="name"></span>
+      <svg class="chevron" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 4l2.5 2.5L7.5 4" /></svg>
+    </button>
+    <ul class="menu" id="moments-menu" aria-label="Choose a moment" hidden></ul>
+  </nav>
+
+  <script src="frames/videos.js"></script>
+  <script src="frames.js"></script>
+  <script src="flipbook.js"></script>
+  <script>
+    (() => {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get("mode") === "card" ? "card" : "play";
+      document.body.dataset.mode = mode;
+
+      const stage = document.getElementById("stage");
+      const tab = document.querySelector(".moments");
+      const button = tab.querySelector(".current");
+      const menu = document.getElementById("moments-menu");
+      const videos = window.FlipbookVideos || [];
+
+      const flipbook = FlipbookScroll.mount(stage, {
+        mode,
+        size: mode === "card" ? 0.78 : 0.58,
+        middle: mode === "card" ? 0.5 : 0.47,
+        across: mode === "card" ? 1.4 : 0,
+      });
+      window.flipbook = flipbook; // for checking on it from the console
+
+      // The menu of moments
+      const options = videos.map((video, i) => {
+        const item = document.createElement("li");
+        item.style.setProperty("--i", i);
+        const choice = document.createElement("button");
+        choice.type = "button";
+        choice.textContent = video.title;
+        choice.addEventListener("click", () => {
+          close(true);
+          show(video.key);
+        });
+        item.append(choice);
+        menu.append(item);
+        return { key: video.key, choice };
+      });
+
+      let closing = 0;
+      function open() {
+        clearTimeout(closing);
+        menu.removeAttribute("data-closing");
+        menu.hidden = false;
+        tab.setAttribute("data-open", "");
+        button.setAttribute("aria-expanded", "true");
+        (options.find((o) => o.choice.hasAttribute("aria-current")) ?? options[0])?.choice.focus({ preventScroll: true });
+      }
+      function close(refocus) {
+        if (menu.hidden || menu.hasAttribute("data-closing")) return;
+        menu.setAttribute("data-closing", "");
+        closing = setTimeout(() => {
+          menu.hidden = true;
+          menu.removeAttribute("data-closing");
+        }, 150);
+        tab.removeAttribute("data-open");
+        button.setAttribute("aria-expanded", "false");
+        if (refocus) button.focus({ preventScroll: true });
+      }
+      button.addEventListener("click", () => (menu.hidden || menu.hasAttribute("data-closing") ? open() : close(false)));
+
+      // Escape or a click anywhere else closes it; up and down move through it, without pushing the strip
+      addEventListener("pointerdown", (e) => {
+        if (!tab.contains(e.target)) close(false);
+      });
+      addEventListener("keydown", (e) => {
+        if (menu.hidden || menu.hasAttribute("data-closing")) return;
+        if (e.key === "Escape") return close(true);
+        if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+        e.preventDefault();
+        const at = options.findIndex((o) => o.choice === document.activeElement);
+        const step = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : -1;
+        options[(at + step + options.length) % options.length]?.choice.focus({ preventScroll: true });
+      }, { capture: true });
+
+      let showing = null;
+      let reel = null;
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      // The next moment starts loading at once; the one showing fades all the way out meanwhile. Once both are done,
+      // a beat of white, and the next fades in from its first frame.
+      async function show(key) {
+        const video = videos.find((v) => v.key === key);
+        if (!video || key === showing) return;
+        showing = key;
+        options.forEach((o) => o.choice.toggleAttribute("aria-current", o.key === key));
+        const next = FlipbookFrames.openVideo(video, flipbook.widthFor(video.width / video.height));
+        document.body.setAttribute("data-hidden", "");
+        await Promise.all([next.ready, flipbook.conceal()]);
+        if (showing !== key) return next.close(); // another was picked meanwhile
+        button.querySelector(".name").textContent = video.title;
+        const old = reel;
+        reel = next;
+        flipbook.setReel(reel, 0);
+        old?.close();
+        await wait(old ? 140 : 0);
+        if (showing !== key) return;
+        document.body.removeAttribute("data-hidden");
+        flipbook.reveal();
+      }
+
+      const first = videos.find((v) => v.key === params.get("video")) ?? videos[0];
+      if (first) show(first.key);
+    })();
+  </script>
+</body>
+</html>
