@@ -57,11 +57,9 @@
     position: fixed;
     inset: 0;
     touch-action: none;
-    cursor: grab;
     user-select: none;
     -webkit-user-select: none;
   }
-  #stage:active { cursor: grabbing; }
 
   /* Changing moments: the strip (flipbook.js, conceal and reveal) and its name fade all the way out together; then,
      after a beat of white, the next name fades in as its cards do, each card a beat after the one to its left */
@@ -314,7 +312,6 @@
   body[data-mode="card"] .note,
   body[data-mode="card"] .moments,
   body[data-mode="card"] .menu { display: none; }
-  body[data-mode="card"] #stage { cursor: default; }
 </style>
 </head>
 <body data-hidden>
