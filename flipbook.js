@@ -38,6 +38,7 @@
   const LET_GO = [0.35, 0.9]; // s since the last push over which friction rises from the first to the second
   const RELEASED = 0.25; // once let go, how long it coasts compared with while it's being pushed
   const STILL = 10; // px a second: slower than this, with nothing pushing, it stops
+  const DRAG = { touch: 6, mouse: 3 }; // how much more a px of dragging counts than a px of scrolling
   const WINDUP = 0.35; // near top speed a push counts for this much less, so the last stretch builds slowly
   const OVER = 1.2; // how far past top speed a push can try to drive it; the cap holds it at top speed meanwhile
   const KNEE = 0.94; // from this share of top speed it bends smoothly into the cap, reaching it exactly at 2 - KNEE
@@ -411,7 +412,9 @@
         pointer.x = e.clientX;
         if (!dx) return;
         strip.brake(false);
-        strip.push(-dx);
+        // A trackpad swipe scrolls thousands of px, momentum and all; a finger across a phone, a few hundred, and
+        // nothing once it lifts. So a drag counts for more, enough that hard swipes reach top speed in about 3 s
+        strip.push(-dx * (e.pointerType === "mouse" ? DRAG.mouse : DRAG.touch));
         clearTimeout(stillTimer);
         stillTimer = setTimeout(() => {
           if (pointer) strip.brake(true);
